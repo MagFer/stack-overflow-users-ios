@@ -9,8 +9,18 @@ import UIKit
 import SwiftUI
 
 final class UsersViewController: UIViewController {
-    
+
     private let tableView = UITableView()
+
+    private lazy var users: [UserModel] = (1...20).map { index in
+        UserModel(
+            id: index,
+            displayName: "John",
+            reputation: index * 10,
+            profileImageURL: nil,
+            isFollowed: index % 2 == 0
+        )
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -48,24 +58,26 @@ final class UsersViewController: UIViewController {
 }
 
 extension UsersViewController: UITableViewDataSource {
-    
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "UserCell", for: indexPath)
-        
-        var content  = cell.defaultContentConfiguration()
-        content.text = "Name \(indexPath.row+1)"
-        content.secondaryText = "User \(indexPath.row+1)"
+        let userModel = users[indexPath.row]
+
+        var content = cell.defaultContentConfiguration()
+        content.text = userModel.displayName
+        content.secondaryText = "\(userModel.reputation) rep"
         cell.contentConfiguration = content
-        
+        cell.accessoryType = userModel.isFollowed ? .checkmark : .none
+
         return cell
     }
-    
+
     func numberOfSections(in tableView: UITableView) -> Int {
         return 1
     }
-    
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return 20
+        return users.count
     }
 }
 
