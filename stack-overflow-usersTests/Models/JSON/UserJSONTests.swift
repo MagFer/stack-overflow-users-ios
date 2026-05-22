@@ -63,7 +63,7 @@ struct UserJSONTests {
     private static func decodeUsersJSONFile() throws -> UsersResponseJSON {
         let urlJSONFile = try #require(
             bundle.url(forResource: "usersJSON", withExtension: "json"),
-            "Missing usersJSON.json fixture in test bundle"
+            "Missing usersJSON.json file in test bundle"
         )
         let usersResponseData = try Data(contentsOf: urlJSONFile)
         return try JSONDecoder().decode(UsersResponseJSON.self, from: usersResponseData)

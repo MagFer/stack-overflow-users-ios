@@ -8,18 +8,41 @@
 import UIKit
 import SwiftUI
 
+//final class UsersPresenter {
+//    weak var view: UsersViewController?
+//
+//    private var users: [UserModel] = [] {
+//        didSet {
+//            
+//        }
+//    }
+//        
+//    var fetchTask: Task<Void, Never>?
+//    func viewDidLoad() {
+//        fetchTask = Task {
+//            
+//        }
+//    }
+//    
+//}
+
 final class UsersViewController: UIViewController {
 
     private let tableView = UITableView()
+    private let spinner = UIActivityIndicatorView()
+    private let errorLabel = UILabel()
+    private let provider: UsersProviderContract
 
-    private lazy var users: [UserModel] = (1...20).map { index in
-        UserModel(
-            id: index,
-            displayName: "John",
-            reputation: index * 10,
-            profileImageURL: nil,
-            isFollowed: index % 2 == 0
-        )
+    private var users: [UserModel] = []
+
+    init(provider: UsersProviderContract) {
+        self.provider = provider
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 
     override func viewDidLoad() {
@@ -28,21 +51,28 @@ final class UsersViewController: UIViewController {
 
         applyStyling()
         configureTableView()
+        configureErrorLabel()
+
+        displayLoadingIndicator()
+        Task {
+            await loadUsers()
+            hideLoadingIndicator()
+        }
     }
 
     private func applyStyling() {
-        view.backgroundColor = .red
+        view.backgroundColor = .systemBackground
     }
 
     private func configureTableView() {
-        self.addTableView()
-        self.registerCells()
+        addTableView()
+        registerCells()
     }
-    
+
     private func addTableView() {
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.dataSource = self
-        
+
         view.addSubview(tableView)
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -54,6 +84,56 @@ final class UsersViewController: UIViewController {
 
     private func registerCells() {
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "UserCell")
+    }
+
+    private func configureErrorLabel() {
+        errorLabel.translatesAutoresizingMaskIntoConstraints = false
+        errorLabel.textAlignment = .center
+        errorLabel.numberOfLines = 0
+        errorLabel.textColor = .secondaryLabel
+        errorLabel.isHidden = true
+
+        view.addSubview(errorLabel)
+        NSLayoutConstraint.activate([
+            errorLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            errorLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            errorLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
+            errorLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32)
+        ])
+    }
+    
+    private func displayLoadingIndicator() {
+        tableView.isHidden = true
+        errorLabel.isHidden = true
+        
+        spinner.startAnimating()
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        
+        view.addSubview(spinner)
+        NSLayoutConstraint.activate([
+            spinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            spinner.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+    }
+    
+    private func hideLoadingIndicator() {
+        spinner.stopAnimating()
+        spinner.removeFromSuperview()
+    }
+
+    private func loadUsers() async {
+        do {
+            users = try await provider.getUsers()
+            errorLabel.isHidden = true
+            tableView.isHidden = false
+            tableView.reloadData()
+        } catch {
+            users = []
+            errorLabel.text = "Couldn't load users. Please check your connection and try again."
+            errorLabel.isHidden = false
+            tableView.isHidden = true
+            tableView.reloadData()
+        }
     }
 }
 
@@ -81,8 +161,22 @@ extension UsersViewController: UITableViewDataSource {
     }
 }
 
-#Preview {
+#if DEBUG
+#Preview("Loaded") {
     UINavigationController(
-        rootViewController: UsersViewController()
+        rootViewController: UsersViewController(provider: UsersProviderMock(
+            result: .success(UserModel.mocks))
+        )
     )
 }
+
+#Preview("Error") {
+    UINavigationController(
+        rootViewController: UsersViewController(
+            provider: UsersProviderMock(
+                result: .failure(UsersProviderMock.MockError.unknown)
+            )
+        )
+    )
+}
+#endif
