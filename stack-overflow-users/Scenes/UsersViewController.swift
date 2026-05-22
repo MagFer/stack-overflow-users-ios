@@ -83,7 +83,10 @@ final class UsersViewController: UIViewController {
     }
 
     private func registerCells() {
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "UserCell")
+        tableView.register(
+            UserTableViewCell.nib,
+            forCellReuseIdentifier: UserTableViewCell.reuseIdentifier
+        )
     }
 
     private func configureErrorLabel() {
@@ -140,15 +143,15 @@ final class UsersViewController: UIViewController {
 extension UsersViewController: UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "UserCell", for: indexPath)
+        guard let cell = tableView.dequeueReusableCell(
+            withIdentifier: UserTableViewCell.reuseIdentifier,
+            for: indexPath
+        ) as? UserTableViewCell else {
+            return UITableViewCell()
+        }
         let userModel = users[indexPath.row]
-
-        var content = cell.defaultContentConfiguration()
-        content.text = userModel.displayName
-        content.secondaryText = "\(userModel.reputation) rep"
-        cell.contentConfiguration = content
-        cell.accessoryType = userModel.isFollowed ? .checkmark : .none
-
+        cell.populate(with: .init(from: userModel))
+        cell.delegate = self
         return cell
     }
 
@@ -158,6 +161,13 @@ extension UsersViewController: UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return users.count
+    }
+}
+
+extension UsersViewController: UserTableViewCellDelegate {
+    
+    func didTapFollowButton(forUserWithID userID: Int) {
+        print("VC tapped follow for user with ID: \(userID)")
     }
 }
 
