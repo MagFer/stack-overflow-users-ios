@@ -8,35 +8,27 @@
 import UIKit
 import SwiftUI
 
-//final class UsersPresenter {
-//    weak var view: UsersViewController?
-//
-//    private var users: [UserModel] = [] {
-//        didSet {
-//            
-//        }
-//    }
-//        
-//    var fetchTask: Task<Void, Never>?
-//    func viewDidLoad() {
-//        fetchTask = Task {
-//            
-//        }
-//    }
-//    
-//}
+@MainActor
+protocol UsersViewContract: AnyObject {
+    func displayLoading()
+    func hideLoading()
+    func display(users: [UserTableViewCell.UIModel])
+    func displayError(message: String)
+}
 
 final class UsersViewController: UIViewController {
 
     private let tableView = UITableView()
     private let spinner = UIActivityIndicatorView()
     private let errorLabel = UILabel()
-    private let provider: UsersProviderContract
+    private let presenter: UsersPresenterContract
 
-    private var users: [UserModel] = []
+    private var users: [UserTableViewCell.UIModel] = []
 
-    init(provider: UsersProviderContract) {
-        self.provider = provider
+    init(
+        usersPresenter: UsersPresenterContract
+    ) {
+        self.presenter = usersPresenter
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -53,23 +45,15 @@ final class UsersViewController: UIViewController {
         configureTableView()
         configureErrorLabel()
 
-        displayLoadingIndicator()
-        Task {
-            await loadUsers()
-            hideLoadingIndicator()
-        }
+        presenter.viewDidLoad()
     }
 
     private func applyStyling() {
         view.backgroundColor = .systemBackground
+        spinner.color = .accent
     }
 
     private func configureTableView() {
-        addTableView()
-        registerCells()
-    }
-
-    private func addTableView() {
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.dataSource = self
 
@@ -80,9 +64,7 @@ final class UsersViewController: UIViewController {
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
-    }
 
-    private func registerCells() {
         tableView.register(
             UserTableViewCell.nib,
             forCellReuseIdentifier: UserTableViewCell.reuseIdentifier
@@ -104,41 +86,48 @@ final class UsersViewController: UIViewController {
             errorLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32)
         ])
     }
-    
-    private func displayLoadingIndicator() {
+}
+
+// MARK: UsersViewContract
+
+extension UsersViewController: UsersViewContract {
+
+    func displayLoading() {
         tableView.isHidden = true
         errorLabel.isHidden = true
-        
+
         spinner.startAnimating()
         spinner.translatesAutoresizingMaskIntoConstraints = false
-        
+
         view.addSubview(spinner)
         NSLayoutConstraint.activate([
             spinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             spinner.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
     }
-    
-    private func hideLoadingIndicator() {
+
+    func hideLoading() {
         spinner.stopAnimating()
         spinner.removeFromSuperview()
     }
 
-    private func loadUsers() async {
-        do {
-            users = try await provider.getUsers()
-            errorLabel.isHidden = true
-            tableView.isHidden = false
-            tableView.reloadData()
-        } catch {
-            users = []
-            errorLabel.text = "Couldn't load users. Please check your connection and try again."
-            errorLabel.isHidden = false
-            tableView.isHidden = true
-            tableView.reloadData()
-        }
+    func display(users: [UserTableViewCell.UIModel]) {
+        self.users = users
+        errorLabel.isHidden = true
+        tableView.isHidden = false
+        tableView.reloadData()
+    }
+
+    func displayError(message: String) {
+        self.users = []
+        errorLabel.text = message
+        errorLabel.isHidden = false
+        tableView.isHidden = true
+        tableView.reloadData()
     }
 }
+
+// MARK: UITableViewDataSource
 
 extension UsersViewController: UITableViewDataSource {
 
@@ -149,43 +138,40 @@ extension UsersViewController: UITableViewDataSource {
         ) as? UserTableViewCell else {
             return UITableViewCell()
         }
-        let userModel = users[indexPath.row]
-        cell.populate(with: .init(from: userModel))
+        cell.populate(with: users[indexPath.row])
         cell.delegate = self
         return cell
     }
 
-    func numberOfSections(in tableView: UITableView) -> Int {
-        return 1
-    }
+    func numberOfSections(in tableView: UITableView) -> Int { 1 }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return users.count
+        users.count
     }
 }
 
+// MARK: UserTableViewCellDelegate
+
 extension UsersViewController: UserTableViewCellDelegate {
-    
+
     func didTapFollowButton(forUserWithID userID: Int) {
-        print("VC tapped follow for user with ID: \(userID)")
+        presenter.didTapFollowButton(forUserID: userID)
     }
 }
 
 #if DEBUG
 #Preview("Loaded") {
     UINavigationController(
-        rootViewController: UsersViewController(provider: UsersProviderMock(
-            result: .success(UserModel.mocks))
+        rootViewController: UsersConfigurator.makeVC(
+            usersProvider: UsersProviderMock(result: .success(UserModel.mocks))
         )
     )
 }
 
 #Preview("Error") {
     UINavigationController(
-        rootViewController: UsersViewController(
-            provider: UsersProviderMock(
-                result: .failure(UsersProviderMock.MockError.unknown)
-            )
+        rootViewController: UsersConfigurator.makeVC(
+            usersProvider: UsersProviderMock(result: .failure(UsersProviderMock.MockError.unknown))
         )
     )
 }

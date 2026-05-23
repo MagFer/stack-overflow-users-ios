@@ -40,13 +40,18 @@ final class UserTableViewCell: UITableViewCell {
     
     override func awakeFromNib() {
         super.awakeFromNib()
-        // Initialization code
+        self.applyStyling()
     }
     
     override func prepareForReuse() {
         super.prepareForReuse()
         imageTask?.cancel()
         profileImageView.image = nil
+    }
+    
+    private func applyStyling() {
+        profileImageView.layer.cornerRadius = 8
+        profileImageView.clipsToBounds = true
     }
     
     private var uiModel: UIModel?
@@ -60,12 +65,6 @@ final class UserTableViewCell: UITableViewCell {
             for: .normal
         )
         loadProfileImage(from: self.uiModel?.profileImageURL)
-    }
-
-    override func setSelected(_ selected: Bool, animated: Bool) {
-        super.setSelected(selected, animated: animated)
-
-        // Configure the view for the selected state
     }
     
     private var imageTask: Task<Void, Never>?
