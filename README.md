@@ -1,5 +1,7 @@
 # stack-overflow-users-ios
 
+![App preview](media/xcode-users-preview.png)
+
 ## Description 
 Develop an iOS application that fetches a list of StackOverflow users and displays it in a list on the screen.
 
@@ -17,6 +19,8 @@ Usage of VIPER (lite) architecture without interactor to avoid unnecesary boiler
 
 ### Icon
 Design basic icon with Sketch, using an SVG logo.
+
+<img src="design/app-logo.jpg" width="160" alt="App icon" />
 
 ### Accent colour
 Get colour ideas from Stack Overflow blog: https://stackoverflow.blog/2025/07/10/vote-on-our-new-identity/
