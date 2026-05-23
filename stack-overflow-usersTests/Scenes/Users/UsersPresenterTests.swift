@@ -9,6 +9,10 @@ import Foundation
 import Testing
 @testable import stack_overflow_users
 
+private enum StubError: Error {
+    case getUsersError
+}
+
 @MainActor
 struct UsersPresenterTests {
 
@@ -54,7 +58,7 @@ struct UsersPresenterTests {
     @Test func usersPresenter_whenProviderThrows_displaysError() async {
         let viewMock = UsersViewControllerMock()
         let presenter = makePresenter(
-            usersProviderResult: .failure(StubError.boom),
+            usersProviderResult: .failure(StubError.getUsersError),
             view: viewMock
         )
 
@@ -78,7 +82,7 @@ struct UsersPresenterTests {
     @Test func usersPresenter_whenViewDidLoadFails_stillHidesLoading() async {
         let viewMock = UsersViewControllerMock()
         let presenter = makePresenter(
-            usersProviderResult: .failure(StubError.boom),
+            usersProviderResult: .failure(StubError.getUsersError),
             view: viewMock
         )
 
@@ -88,19 +92,79 @@ struct UsersPresenterTests {
         #expect(viewMock.hideLoadingTimesCalled == 1)
     }
 
+    @Test func usersPresenter_whenFollowButtonTappedForKnownUser_displaysUsersWithToggledFollow() async {
+        let viewMock = UsersViewControllerMock()
+        let initialUser = UserModel(
+            id: 22656,
+            displayName: "Jon Skeet",
+            reputation: 1_527_350,
+            profileImageURL: nil,
+            isFollowed: false
+        )
+        let stub = UsersProviderSpy(
+            getUsersResult: .success([initialUser]),
+            toggleFollowResult: .success(initialUser.with(isFollowed: true))
+        )
+        let presenter = makePresenter(stub: stub, view: viewMock)
+
+        presenter.viewDidLoad()
+        _ = await viewMock.waitForDisplayUsers()
+
+        presenter.didTapFollowButton(forUserID: 22656)
+        let userCellUIModels = await viewMock.waitForDisplayUsers()
+
+        #expect(stub.toggleFollowCallCount == 1)
+        #expect(viewMock.displayedUsers.count == 2)
+        #expect(userCellUIModels.count == 1)
+        #expect(userCellUIModels.first?.userID == 22656)
+        #expect(userCellUIModels.first?.followed == true)
+        #expect(stub.toggleFollowCallCount == 1)
+        #expect(stub.lastToggleFollowUser?.id == 22656)
+    }
+
+    @Test func usersPresenter_whenFollowButtonTappedForUnknownUser_doesNotCallProviderOrRedisplay() async {
+        let viewMock = UsersViewControllerMock()
+        let knownUser = UserModel(
+            id: 1,
+            displayName: "Known",
+            reputation: 0,
+            profileImageURL: nil,
+            isFollowed: false
+        )
+        let stub = UsersProviderSpy(getUsersResult: .success([knownUser]))
+        let presenter = makePresenter(stub: stub, view: viewMock)
+
+        presenter.viewDidLoad()
+        _ = await viewMock.waitForDisplayUsers()
+
+        presenter.didTapFollowButton(forUserID: 999)
+
+        #expect(stub.toggleFollowCallCount == 0)
+        #expect(viewMock.displayedUsers.count == 1)
+        #expect(viewMock.displayedErrorMessages.isEmpty)
+    }
+
     // MARK: Helpers
 
     private func makePresenter(
         usersProviderResult: Result<[UserModel], Error>,
         view: UsersViewControllerMock
     ) -> UsersPresenter {
+        makePresenter(
+            stub: UsersProviderSpy(getUsersResult: usersProviderResult),
+            view: view
+        )
+    }
+
+    private func makePresenter(
+        stub: UsersProviderSpy,
+        view: UsersViewControllerMock
+    ) -> UsersPresenter {
         let presenter = UsersPresenter(
-            usersProvider: UsersProviderStub(result: usersProviderResult),
-            usersRouter: UsersRouterStub()
+            usersProvider: stub,
+            usersRouter: UsersRouterDummy()
         )
         presenter.view = view
         return presenter
     }
 }
-
-private enum StubError: Error { case boom }

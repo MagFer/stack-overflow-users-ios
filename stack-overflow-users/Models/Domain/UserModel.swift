@@ -23,6 +23,16 @@ extension UserModel {
         self.profileImageURL = json.profileImage.flatMap(URL.init)
         self.isFollowed = isFollowed
     }
+
+    func with(isFollowed: Bool) -> Self {
+        .init(
+            id: id,
+            displayName: displayName,
+            reputation: reputation,
+            profileImageURL: profileImageURL,
+            isFollowed: isFollowed
+        )
+    }
 }
 
 #if DEBUG
@@ -36,13 +46,15 @@ extension UserModel {
                     reputation: 1527350, 
                     profileImage: "https://www.gravatar.com/avatar/6d8ebb117e8d83d74ea95fbdd0f87e13?s=256&d=identicon&r=PG"
                 ),
-                isFollowed: true),
+                isFollowed: true
+            ),
             UserModel(
                 json: .init(
                     userId: 6309,
                     displayName: "VonC",
                     reputation: 1370686,
-                    profileImage: "https://i.sstatic.net/I4fiW.jpg?s=256"), isFollowed: false
+                    profileImage: "https://i.sstatic.net/I4fiW.jpg?s=256"),
+                isFollowed: false
             ),
             UserModel(
                 json: .init(
@@ -51,7 +63,8 @@ extension UserModel {
                     reputation: 1276832, 
                     profileImage: "https://www.gravatar.com/avatar/e514b017977ebf742a418cac697d8996?s=256&d=identicon&r=PG"
                 ),
-                isFollowed: false),
+                isFollowed: false
+            ),
             UserModel(
                 json: .init(
                     userId: 100297,
@@ -59,7 +72,8 @@ extension UserModel {
                     reputation: 1141895, 
                     profileImage: "https://www.gravatar.com/avatar/24780fb6df85a943c7aea0402c843737?s=256&d=identicon&r=PG"
                 ),
-                isFollowed: false),
+                isFollowed: false
+            ),
             UserModel(
                 json: .init(
                     userId: 157882,
@@ -202,7 +216,8 @@ extension UserModel {
                     reputation: 832148,
                     profileImage: "https://www.gravatar.com/avatar/932fb89b9d4049cec5cba357bf0ae388?s=256&d=identicon&r=PG"
                 ),
-                isFollowed: false)
+                isFollowed: false
+            )
         ]
     }
 }

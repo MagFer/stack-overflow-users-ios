@@ -21,7 +21,9 @@ final class UsersPresenter: UsersPresenterContract {
     private let provider: UsersProviderContract
     private let router: UsersRouterContract
 
+    private var currentUsers: [UserModel] = []
     private var loadUsersTask: Task<Void, Never>?
+    private var toggleFollowTask: Task<Void, Never>?
 
     init(
         usersProvider: UsersProviderContract,
@@ -33,7 +35,10 @@ final class UsersPresenter: UsersPresenterContract {
 
     deinit {
         loadUsersTask?.cancel()
+        toggleFollowTask?.cancel()
     }
+    
+    // MARK: Inputs
 
     func viewDidLoad() {
         loadUsersTask?.cancel()
@@ -42,20 +47,41 @@ final class UsersPresenter: UsersPresenterContract {
         }
     }
 
+    func didTapFollowButton(forUserID userID: Int) {
+        guard let user = currentUsers.first(where: { $0.id == userID }) else {
+            // TODO: Display unknown error in bottom banner
+            return
+        }
+        toggleFollowTask?.cancel()
+        toggleFollowTask = Task { [weak self] in
+            await self?.toggleFollow(for: user)
+        }
+    }
+    
+    // MARK: Logic
+    
     private func loadUsers() async {
         view?.displayLoading()
         do {
             let users = try await provider.getUsers()
-            let viewModels = users.map { UserTableViewCell.UIModel(from: $0) }
-            view?.display(users: viewModels)
+            currentUsers = users
+            view?.display(users: users.map { UserTableViewCell.UIModel(from: $0) })
         } catch {
+            currentUsers = []
             view?.displayError(message: "Couldn't load users. Please check your connection and try again.")
             // TODO: Interecept different kinds of errors and react accordingly.
         }
         view?.hideLoading()
     }
 
-    func didTapFollowButton(forUserID userID: Int) {
-        // TODO: Simulat locally follow functionallity
+    private func toggleFollow(for user: UserModel) async {
+        do {
+            let updated = try await provider.toggleFollow(for: user)
+            guard let index = currentUsers.firstIndex(where: { $0.id == updated.id }) else { return }
+            currentUsers[index] = updated
+            view?.display(users: currentUsers.map { UserTableViewCell.UIModel(from: $0) })
+        } catch {
+            // TODO: Display follow failure as bottom banner once we have a real backend
+        }
     }
 }
